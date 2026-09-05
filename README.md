@@ -15,6 +15,7 @@ No package database. No complicated setup. Just a small tool that makes managing
 ```bash
 git clone https://github.com/formidible/NixPkg.git
 cd NixPkg
+chmod +x install.sh
 ./install.sh
 ```
 
