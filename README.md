@@ -11,6 +11,7 @@ A simple Rust CLI for adding and removing packages from your NixOS configuration
 No package database. No complicated setup. Just a small tool that makes managing `environment.systemPackages` easier.
 
 ## Install
+GCC IS REQUIRED FOR INSTALL
 
 ```bash
 git clone https://github.com/formidible/NixPkg.git
