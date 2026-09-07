@@ -9,7 +9,7 @@ pub const BOLD: &str = "\x1b[1m";
 pub fn header() {
     println!();
     println!("{CYAN}╭──────────────────────────────────────────╮{RESET}");
-    println!("{CYAN}│  ❄ nixadd                                │{RESET}");
+    println!("{CYAN}│  ❄ NixPkg ❄                              │{RESET}");
     println!("{CYAN}╰──────────────────────────────────────────╯{RESET}");
     println!();
 }
