@@ -9,7 +9,11 @@ pub const BOLD: &str = "\x1b[1m";
 pub fn header() {
     println!();
     println!("{CYAN}╭──────────────────────────────────────────╮{RESET}");
+<<<<<<< HEAD
     println!("{CYAN}│  ❄ NixPkg ❄                              │{RESET}");
+=======
+    println!("{CYAN}│  ❄ nixpkg                                │{RESET}");
+>>>>>>> 7eaaaa8 (update)
     println!("{CYAN}╰──────────────────────────────────────────╯{RESET}");
     println!();
 }
@@ -51,10 +55,6 @@ pub fn diff_add(message: &str) {
 
 pub fn diff_remove(message: &str) {
     println!("    {RED}- {message}{RESET}");
-}
-
-pub fn package_item(message: &str) {
-    println!("    {CYAN}•{RESET} {message}");
 }
 
 pub fn tip(message: &str) {

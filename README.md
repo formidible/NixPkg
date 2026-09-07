@@ -26,6 +26,10 @@ The installer builds `nixpkg` and installs it to:
 ~/.local/bin/nixpkg
 ```
 
+It builds directly with Cargo when available. Otherwise, on a system with
+Nix, it automatically uses `nix-shell` to provide Cargo and Rust. No setup
+prompts are required.
+
 It also configures your PATH.
 
 ## Usage
@@ -60,6 +64,17 @@ nixpkg firefox --rebuild
 nixpkg --remove firefox --rebuild
 ```
 
+### Search the nixpkgs repository
+
+```bash
+nixpkg --search firefox
+```
+
+This performs an exact package-name search against the official nixpkgs
+repository. Evaluation output is suppressed so the terminal only shows the
+matching response. The required `nix-command` and `flakes` features are
+enabled for this command only; your Nix configuration is not changed.
+
 ## Commands
 
 | Command                               | Description                  |
@@ -70,6 +85,7 @@ nixpkg --remove firefox --rebuild
 | `nixpkg --remove <package>`           | Remove a package             |
 | `nixpkg --remove <package> --dry-run` | Preview a removal            |
 | `nixpkg --remove <package> --rebuild` | Remove a package and rebuild |
+| `nixpkg --search <term>`              | Search the nixpkgs repository |
 | `nixpkg --help`                       | Show help                    |
 | `nixpkg --credits`                    | Show credits                 |
 
@@ -91,6 +107,9 @@ nixpkg firefox
 ```
 
 adds `firefox` to the list.
+
+If `environment.systemPackages` is not in the file yet, nixpkg creates the
+list before adding the package.
 
 Before making a change, `nixpkg` creates a backup and asks for confirmation.
 

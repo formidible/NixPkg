@@ -8,7 +8,7 @@ mod ui;
 fn print_credits() {
     ui::header();
 
-    println!("  nixadd");
+    println!("  nixpkg");
     println!("  A simple CLI for managing NixOS packages.");
     println!();
     println!("  Created by Formidible");
@@ -26,18 +26,120 @@ fn print_usage() {
     println!("  Usage:");
     println!();
 
-    println!("    nixadd <package>");
-    println!("    nixadd <package> --dry-run");
-    println!("    nixadd <package> --rebuild");
+    println!("    nixpkg <package>");
+    println!("    nixpkg <package> --dry-run");
+    println!("    nixpkg <package> --rebuild");
     println!();
 
-    println!("    nixadd --remove <package>");
-    println!("    nixadd --remove <package> --dry-run");
-    println!("    nixadd --remove <package> --rebuild");
+    println!("    nixpkg --remove <package>");
+    println!("    nixpkg --remove <package> --dry-run");
+    println!("    nixpkg --remove <package> --rebuild");
     println!();
 
-    println!("    nixadd --credits");
+    println!("    nixpkg --search <term>");
+    println!("    nixpkg --credits");
     println!();
+}
+
+fn search(term: &str) -> i32 {
+    ui::header();
+    ui::section(&format!("Searching nixpkgs for '{term}'"));
+
+    let pattern = format!("^{}$", escape_regex(term));
+
+    match Command::new("nix")
+        .args([
+            "--extra-experimental-features",
+            "nix-command flakes",
+            "search",
+            "nixpkgs",
+            &pattern,
+        ])
+        .output()
+    {
+        Ok(output) if output.status.success() => {
+            let results = String::from_utf8_lossy(&output.stdout);
+
+            if results.trim().is_empty() {
+                ui::info("No exact package match found.");
+            } else {
+                print_formatted_results(&results);
+            }
+
+            0
+        }
+        Ok(output) => {
+            ui::error(&format!("nix search failed with status: {}", output.status));
+
+            let details = String::from_utf8_lossy(&output.stderr);
+            if let Some(details) = details.lines().find(|line| !line.trim().is_empty()) {
+                ui::error(details.trim());
+            }
+
+            1
+        }
+        Err(error) => {
+            ui::error(&format!("Could not run nix search: {error}"));
+            ui::tip("Install Nix or make sure the nix command is on your PATH.");
+            1
+        }
+    }
+}
+
+fn escape_regex(value: &str) -> String {
+    value
+        .chars()
+        .flat_map(|character| {
+            if matches!(
+                character,
+                '.' | '^' | '$' | '*' | '+' | '?' | '(' | ')' | '[' | ']' | '{'
+                    | '}' | '|' | '\\'
+            ) {
+                vec!['\\', character]
+            } else {
+                vec![character]
+            }
+        })
+        .collect()
+}
+
+fn print_formatted_results(results: &str) {
+    let mut first_result = true;
+
+    for line in results.lines() {
+        let line = line.trim();
+
+        if line.is_empty() {
+            continue;
+        }
+
+        if line == "*" {
+            continue;
+        }
+
+        if let Some(entry) = line
+            .strip_prefix("- ")
+            .or_else(|| line.strip_prefix("* "))
+        {
+            if !first_result {
+                println!();
+            }
+            first_result = false;
+
+            let entry = entry
+                .strip_prefix("legacyPackages.x86_64-linux.")
+                .or_else(|| entry.strip_prefix("legacyPackages."))
+                .unwrap_or(entry);
+            let entry = entry
+                .split_once('.')
+                .map(|(_, package)| package)
+                .unwrap_or(entry);
+
+            println!("  {entry}");
+        } else {
+            println!("    {line}");
+        }
+    }
 }
 
 fn confirm() -> bool {
@@ -102,6 +204,19 @@ fn main() {
         return;
     }
 
+    if args[1] == "--search" {
+        let term = match args.get(2) {
+            Some(term) if !term.starts_with('-') => term,
+            _ => {
+                ui::error("Missing search term.");
+                println!("  Usage: nixpkg --search <term>");
+                std::process::exit(1);
+            }
+        };
+
+        std::process::exit(search(term));
+    }
+
     if args[1] == "--help" || args[1] == "-h" {
         print_usage();
         return;
@@ -118,7 +233,7 @@ fn main() {
             _ => {
                 ui::error("Missing package name.");
                 println!();
-                println!("  Usage: nixadd --remove <package>");
+                println!("  Usage: nixpkg --remove <package>");
                 println!();
                 std::process::exit(1);
             }
@@ -233,7 +348,7 @@ fn main() {
         }
 
         ui::success(&format!(
-            "Backup created: {}.nixadd-backup",
+            "Backup created: {}.nixpkg-backup",
             path.display()
         ));
 
@@ -280,8 +395,13 @@ fn main() {
     ui::success("Package not already installed");
     ui::section("Proposed changes");
 
-    println!("    environment.systemPackages = with pkgs; [");
-    println!("      ...");
+    if config::has_system_packages(&contents) {
+        println!("    environment.systemPackages = with pkgs; [");
+        println!("      ...");
+    } else {
+        ui::info("No environment.systemPackages list found; it will be created.");
+        println!("    environment.systemPackages = with pkgs; [");
+    }
     ui::diff_add(package);
     println!("    ];");
 
@@ -310,18 +430,22 @@ fn main() {
     }
 
     ui::success(&format!(
-        "Backup created: {}.nixadd-backup",
+        "Backup created: {}.nixpkg-backup",
         path.display()
     ));
 
-    let modified = match config::add_package(&contents, package) {
-        Ok(modified) => modified,
-        Err(error) => {
-            ui::error(&format!(
-                "Failed to modify configuration: {error}"
-            ));
-            std::process::exit(1);
+    let modified = if config::has_system_packages(&contents) {
+        match config::add_package(&contents, package) {
+            Ok(modified) => modified,
+            Err(error) => {
+                ui::error(&format!(
+                    "Failed to modify configuration: {error}"
+                ));
+                std::process::exit(1);
+            }
         }
+    } else {
+        config::create_system_packages(&contents, package)
     };
 
     if let Err(error) = config::write_config(&path, &modified) {

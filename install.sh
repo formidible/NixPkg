@@ -3,7 +3,6 @@ set -euo pipefail
 
 cd "$(dirname "$0")"
 
-PROJECT_DIR="$(pwd)"
 INSTALL_DIR="$HOME/.local/bin"
 BINARY="$INSTALL_DIR/nixpkg"
 
@@ -39,23 +38,12 @@ echo
 
 step "Checking dependencies"
 
-if ! command -v nix >/dev/null 2>&1; then
-    error "Nix not found."
-    exit 1
-fi
-
-success "Nix found"
-
-
 if command -v cargo >/dev/null 2>&1; then
     success "Cargo found"
+elif command -v nix >/dev/null 2>&1; then
+    success "Nix found; it will provide Cargo for the build"
 else
-    warning "Cargo not found"
-    echo
-    echo "Install cargo first:"
-    echo
-    echo "  nix-shell -p cargo"
-    echo
+    error "Neither Cargo nor Nix was found."
     exit 1
 fi
 
@@ -63,17 +51,8 @@ fi
 step "Checking project"
 
 if [ ! -f "Cargo.toml" ]; then
-
-    warning "Cargo.toml missing"
-
-    echo
-    echo "  Initializing Rust project..."
-    echo
-
-    cargo init --name nixpkg .
-
-    success "Rust project created"
-
+    error "Cargo.toml not found in the project directory."
+    exit 1
 fi
 
 success "Project ready"
@@ -84,7 +63,13 @@ mkdir -p "$INSTALL_DIR"
 
 step "Building nixpkg"
 
-cargo build --release
+if command -v cargo >/dev/null 2>&1; then
+    success "Cargo found"
+    cargo build --release
+else
+    warning "Cargo not found; building with Nix"
+    nix-shell -p cargo rustc --run 'cargo build --release'
+fi
 
 success "Build complete"
 
@@ -102,18 +87,23 @@ step "Configuring PATH"
 
 PATH_LINE='export PATH="$HOME/.local/bin:$PATH"'
 
+add_path_line() {
+    local shell_file="$1"
+
+    touch "$shell_file"
+    if ! grep -Fxq "$PATH_LINE" "$shell_file"; then
+        printf '\n%s\n' "$PATH_LINE" >> "$shell_file"
+    fi
+}
+
+add_path_line "$HOME/.profile"
 
 if [ -f "$HOME/.bashrc" ]; then
-    if ! grep -Fxq "$PATH_LINE" "$HOME/.bashrc"; then
-        echo "$PATH_LINE" >> "$HOME/.bashrc"
-    fi
+    add_path_line "$HOME/.bashrc"
 fi
 
-
 if [ -f "$HOME/.zshrc" ]; then
-    if ! grep -Fxq "$PATH_LINE" "$HOME/.zshrc"; then
-        echo "$PATH_LINE" >> "$HOME/.zshrc"
-    fi
+    add_path_line "$HOME/.zshrc"
 fi
 
 

@@ -23,7 +23,7 @@ pub fn write_config(path: &PathBuf, contents: &str) -> Result<(), String> {
 
 pub fn backup_config(path: &PathBuf) -> Result<PathBuf, String> {
     let backup_path =
-        PathBuf::from(format!("{}.nixadd-backup", path.display()));
+        PathBuf::from(format!("{}.nixpkg-backup", path.display()));
 
     fs::copy(path, &backup_path)
         .map_err(|error| format!("Failed to create backup: {error}"))?;
@@ -99,29 +99,42 @@ pub fn add_package(
     let indentation = package_list
         .lines()
         .rev()
-        .find(|line| !line.trim().is_empty())
+        .find(|line| !line.trim().is_empty() && line.trim() != package)
         .map(|line| {
             line.chars()
                 .take_while(|c| c.is_whitespace())
                 .collect::<String>()
         })
-        .unwrap_or_else(|| "  ".to_string());
+        .filter(|indent| !indent.is_empty())
+        .unwrap_or_else(|| "    ".to_string());
+
+    let closing_indent = package_list
+        .rsplit_once('\n')
+        .map(|(_, trailing)| trailing)
+        .unwrap_or("");
+    let package_list = package_list.trim_end_matches([' ', '\t', '\n', '\r']);
 
     let mut result =
         String::with_capacity(contents.len() + package.len() + 8);
 
-    result.push_str(&contents[..end]);
+    result.push_str(&contents[..start + 1]);
+    result.push_str(package_list);
 
-    if !package_list.ends_with('\n') {
+    if !package_list.is_empty() {
         result.push('\n');
     }
 
     result.push_str(&indentation);
     result.push_str(package);
-
+    result.push('\n');
+    result.push_str(closing_indent);
     result.push_str(&contents[end..]);
 
     Ok(result)
+}
+
+pub fn has_system_packages(contents: &str) -> bool {
+    find_system_packages(contents).is_ok()
 }
 
 pub fn remove_package(
@@ -195,4 +208,37 @@ pub fn create_system_packages(
     result.push_str(&contents[insert_position..]);
 
     result
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn adds_a_package_to_an_existing_list() {
+        let config = "{ pkgs, ... }:\n{\n  environment.systemPackages = with pkgs; [\n    git\n  ];\n}\n";
+
+        let updated = add_package(config, "ripgrep").unwrap();
+
+        assert!(updated.contains("    git\n    ripgrep\n  ];"));
+    }
+
+    #[test]
+    fn creates_the_package_list_when_it_is_missing() {
+        let config = "{ pkgs, ... }:\n{\n  services.openssh.enable = true;\n}\n";
+
+        let updated = create_system_packages(config, "firefox");
+
+        assert!(updated.contains(
+            "environment.systemPackages = with pkgs; [\n    firefox\n  ];"
+        ));
+        assert!(updated.contains("services.openssh.enable = true;"));
+    }
+
+    #[test]
+    fn does_not_treat_a_comment_as_the_package_list() {
+        let config = "{ ... }:\n{\n  # environment.systemPackages = with pkgs; [ git ];\n}\n";
+
+        assert!(!has_system_packages(config));
+    }
 }
