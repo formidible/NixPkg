@@ -1,97 +1,81 @@
 # nixpkg
 
-A simple Rust CLI for adding and removing packages from your NixOS configuration.
+`nixpkg` is a small Rust CLI for adding and removing packages from a NixOS
+configuration.
 
-`nixpkg` directly edits:
-
-```text
-/etc/nixos/configuration.nix
-```
-
-No package database. No complicated setup. Just a small tool that makes managing `environment.systemPackages` easier.
+It edits `/etc/nixos/configuration.nix` directly. There is no package
+database or extra service; it is simply a convenient way to maintain
+`environment.systemPackages`.
 
 ## Install
-GCC IS REQUIRED FOR INSTALL
-
+## Gcc MUST Be installed Before Hand
 ```bash
 git clone https://github.com/formidible/NixPkg.git
 cd NixPkg
-chmod +x install.sh
 ./install.sh
 ```
 
-The installer builds `nixpkg` and installs it to:
-
-```text
-~/.local/bin/nixpkg
-```
-
-It builds directly with Cargo when available. Otherwise, on a system with
-Nix, it automatically uses `nix-shell` to provide Cargo and Rust. No setup
-prompts are required.
-
-It also configures your PATH.
+The installer builds the binary and places it at `~/.local/bin/nixpkg`.
+It uses Cargo when available. If Cargo is missing, it uses Nix to provide
+Cargo and Rust automatically, then configures the user shell PATH.
 
 ## Usage
 
-### Add a package
+Add or remove a package:
 
 ```bash
 nixpkg firefox
-```
-
-### Remove a package
-
-```bash
 nixpkg --remove firefox
 ```
 
-### Preview a change
+Preview a change without modifying the configuration:
 
 ```bash
 nixpkg firefox --dry-run
+nixpkg --remove firefox --dry-run
 ```
 
-### Add a package and rebuild
+Update the configuration and rebuild the system:
 
 ```bash
 nixpkg firefox --rebuild
-```
-
-### Remove a package and rebuild
-
-```bash
 nixpkg --remove firefox --rebuild
 ```
 
-### Search the nixpkgs repository
+Search for an exact package name in nixpkgs:
 
 ```bash
 nixpkg --search firefox
 ```
 
-This performs an exact package-name search against the official nixpkgs
-repository. Evaluation output is suppressed so the terminal only shows the
-matching response. The required `nix-command` and `flakes` features are
-enabled for this command only; your Nix configuration is not changed.
+Search output is filtered to matching package results. The `nix-command` and
+`flakes` features are enabled for that command only; the user's Nix
+configuration is not changed.
+
+View help or credits:
+
+```bash
+nixpkg --help
+nixpkg --credits
+```
 
 ## Commands
 
-| Command                               | Description                  |
-| ------------------------------------- | ---------------------------- |
-| `nixpkg <package>`                    | Add a package                |
-| `nixpkg <package> --dry-run`          | Preview an addition          |
-| `nixpkg <package> --rebuild`          | Add a package and rebuild    |
-| `nixpkg --remove <package>`           | Remove a package             |
-| `nixpkg --remove <package> --dry-run` | Preview a removal            |
+| Command | Description |
+| --- | --- |
+| `nixpkg <package>` | Add a package |
+| `nixpkg <package> --dry-run` | Preview an addition |
+| `nixpkg <package> --rebuild` | Add a package and rebuild |
+| `nixpkg --remove <package>` | Remove a package |
+| `nixpkg --remove <package> --dry-run` | Preview a removal |
 | `nixpkg --remove <package> --rebuild` | Remove a package and rebuild |
-| `nixpkg --search <term>`              | Search the nixpkgs repository |
-| `nixpkg --help`                       | Show help                    |
-| `nixpkg --credits`                    | Show credits                 |
+| `nixpkg --search <term>` | Search nixpkgs |
+| `nixpkg --help` | Show help |
+| `nixpkg --credits` | Show credits |
 
-## How it works
+## How changes work
 
-If your configuration contains:
+Given:
 
 ```nix
 environment.systemPackages = with pkgs; [
@@ -100,57 +84,38 @@ environment.systemPackages = with pkgs; [
 ];
 ```
 
-Running:
+running `nixpkg firefox` adds `firefox` to the list. If
+`environment.systemPackages` is missing, nixpkg creates the list before
+adding the package.
 
-```bash
-nixpkg firefox
-```
+Before changing the file, nixpkg shows the proposed change, asks for
+confirmation, creates `/etc/nixos/configuration.nix.nixpkg-backup`, and then
+writes the updated configuration. `--dry-run` skips the confirmation and
+write steps.
 
-adds `firefox` to the list.
-
-If `environment.systemPackages` is not in the file yet, nixpkg creates the
-list before adding the package.
-
-Before making a change, `nixpkg` creates a backup and asks for confirmation.
-
-Using `--dry-run` shows the proposed change without modifying your configuration.
-
-Using `--rebuild` runs:
+With `--rebuild`, nixpkg runs:
 
 ```bash
 nixos-rebuild switch
 ```
 
-after the configuration has been updated.
+after the file is updated.
 
 ## Requirements
 
-* NixOS
-* Nix
-* Cargo
+- NixOS
+- Nix
+- Bash for the installer
+- Cargo, or Nix to provide Cargo and Rust during installation
 
-If Cargo isn't installed, the installer can install it for you.
+The command must be able to read and write `/etc/nixos/configuration.nix`.
+Depending on file permissions, you may need appropriate privileges.
 
-## Disclaimer
+## Safety
 
-`nixpkg` modifies your NixOS configuration and can run `nixos-rebuild`.
-
-**Use it at your own risk.**
-
-Make sure you have a working backup or recovery option before making changes to your system.
-
-## Why?
-
-I wanted a simple command for:
-
-```text
-"put this package in my NixOS config"
-```
-
-So I made one.
-
-Written in Rust.
-Built for NixOS.
+`nixpkg` directly modifies your NixOS configuration and can run
+`nixos-rebuild`. Review proposed changes and keep a separate recovery path
+for your system before using it.
 
 ## License
 
