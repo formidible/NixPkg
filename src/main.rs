@@ -15,7 +15,8 @@ fn print_credits() {
     println!("  Written in Rust 🦀");
     println!("  Built for NixOS ❄");
     println!();
-    println!("  GitHub: github.com/formidible");
+    println!("  GitHub: github.com/formidible/NixPkg");
+    println!("   Please Star The Repo! ❤️");
     println!();
 }
 
