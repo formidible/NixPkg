@@ -2,15 +2,51 @@ use std::fs;
 use std::path::PathBuf;
 
 pub fn find_config() -> Result<PathBuf, String> {
-    for filename in ["configuration.nix", "packages.nix"] {
-        let path = PathBuf::from(format!("/etc/nixos/{filename}"));
+    let config_dir = PathBuf::from("/etc/nixos");
+    let mut candidates = Vec::new();
+    collect_nix_files(&config_dir, &mut candidates);
+    candidates.sort();
+    candidates.sort_by_key(|path| {
+        if path.file_name().and_then(|name| name.to_str())
+            == Some("configuration.nix")
+        {
+            0
+        } else if path.file_name().and_then(|name| name.to_str())
+            == Some("packages.nix")
+        {
+            1
+        } else {
+            2
+        }
+    });
 
-        if path.is_file() {
-            return Ok(path);
+    for path in candidates {
+        if let Ok(contents) = fs::read_to_string(&path) {
+            if has_system_packages(&contents) {
+                return Ok(path);
+            }
         }
     }
 
-    Err("Could not find /etc/nixos/configuration.nix or /etc/nixos/packages.nix".to_string())
+    Err("Could not find a Nix file containing environment.systemPackages in /etc/nixos".to_string())
+}
+
+fn collect_nix_files(directory: &PathBuf, files: &mut Vec<PathBuf>) {
+    let entries = match fs::read_dir(directory) {
+        Ok(entries) => entries,
+        Err(_) => return,
+    };
+
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.is_dir() {
+            collect_nix_files(&path, files);
+        } else if path.extension().and_then(|extension| extension.to_str())
+            == Some("nix")
+        {
+            files.push(path);
+        }
+    }
 }
 
 pub fn read_config(path: &PathBuf) -> Result<String, String> {

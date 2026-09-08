@@ -5,11 +5,15 @@ PROJECT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 INSTALL_DIR="${XDG_BIN_HOME:-$HOME/.local/bin}"
 BINARY="$INSTALL_DIR/nixpkg"
 CONFIG_DIR="/etc/nixos"
-if [[ -f "$CONFIG_DIR/configuration.nix" ]]; then
-    CONFIG_FILE="$CONFIG_DIR/configuration.nix"
-elif [[ -f "$CONFIG_DIR/packages.nix" ]]; then
-    CONFIG_FILE="$CONFIG_DIR/packages.nix"
-else
+CONFIG_FILE=""
+while IFS= read -r -d '' candidate; do
+    if grep -q "environment\.systemPackages" "$candidate"; then
+        CONFIG_FILE="$candidate"
+        break
+    fi
+done < <(find "$CONFIG_DIR" -type f -name '*.nix' -print0 2>/dev/null)
+
+if [[ -z "$CONFIG_FILE" ]]; then
     CONFIG_FILE="$CONFIG_DIR/configuration.nix"
 fi
 
@@ -66,7 +70,7 @@ case "$choice" in
             exit 1
         fi
         if [[ ! -f "$CONFIG_FILE" ]]; then
-            error "Could not find $CONFIG_FILE"
+            error "Could not find a Nix file containing environment.systemPackages in $CONFIG_DIR"
             exit 1
         fi
 

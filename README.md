@@ -3,9 +3,9 @@
 `nixpkg` is a small Rust CLI for adding and removing packages from a NixOS
 configuration.
 
-It edits `/etc/nixos/configuration.nix` directly, or `/etc/nixos/packages.nix`
-when `configuration.nix` is not present. There is no package database or extra
-service; it is simply a convenient way to maintain
+It searches `/etc/nixos` for a Nix file containing
+`environment.systemPackages` and edits that file directly. There is no package
+database or extra service; it is simply a convenient way to maintain
 `environment.systemPackages`.
 
 ## Install
@@ -110,8 +110,8 @@ after the file is updated.
 - Bash for the installer
 - Cargo and a C compiler, or NixOS/Nix to install them during installation
 
-The command must be able to read and write `/etc/nixos/configuration.nix`, or
-`/etc/nixos/packages.nix` when the former is absent.
+The command must be able to read and write the matching Nix file under
+`/etc/nixos`.
 Depending on file permissions, you may need appropriate privileges.
 
 
