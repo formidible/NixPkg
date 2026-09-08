@@ -111,6 +111,16 @@ after the file is updated.
 The command must be able to read and write `/etc/nixos/configuration.nix`.
 Depending on file permissions, you may need appropriate privileges.
 
+
+## Disclaimer
+
+By instaling this package you are aware that if it causes a malformation in your system configuration I am NOT liable for any issues. 
+
+NixPkg installer does not yet port to your /local/bin so it will not automatically run globally. You need to add it to your path.
+
+
+
+
 ## Safety
 
 `nixpkg` directly modifies your NixOS configuration and can run
