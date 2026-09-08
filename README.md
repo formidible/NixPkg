@@ -8,7 +8,6 @@ database or extra service; it is simply a convenient way to maintain
 `environment.systemPackages`.
 
 ## Install
-## Gcc MUST Be installed Before Hand
 ```bash
 git clone https://github.com/formidible/NixPkg.git
 cd NixPkg
@@ -16,8 +15,10 @@ cd NixPkg
 ```
 
 The installer builds the binary and places it at `~/.local/bin/nixpkg`.
-It uses Cargo when available. If Cargo is missing, it uses Nix to provide
-Cargo and Rust automatically, then configures the user shell PATH.
+It presents a menu. If Cargo is missing, option 2 adds `cargo`, `rustc`, and
+`gcc` to `/etc/nixos/configuration.nix`, creates a backup, and runs
+`nixos-rebuild switch` before building. It also configures the user shell PATH
+so `nixpkg` is available in new terminals.
 
 ## Usage
 
@@ -106,7 +107,7 @@ after the file is updated.
 - NixOS
 - Nix
 - Bash for the installer
-- Cargo, or Nix to provide Cargo and Rust during installation
+- Cargo and a C compiler, or NixOS/Nix to install them during installation
 
 The command must be able to read and write `/etc/nixos/configuration.nix`.
 Depending on file permissions, you may need appropriate privileges.
