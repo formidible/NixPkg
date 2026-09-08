@@ -259,8 +259,6 @@ fn main() {
         println!("  {}Action:{} add", ui::CYAN, ui::RESET);
     }
 
-    ui::config("/etc/nixos/configuration.nix");
-
     if dry_run {
         println!("  {}Mode:{} dry run", ui::CYAN, ui::RESET);
     }
@@ -277,6 +275,7 @@ fn main() {
         }
     };
 
+    ui::config(&path.display().to_string());
     ui::success("Configuration found");
 
     let contents = match config::read_config(&path) {

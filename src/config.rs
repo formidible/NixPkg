@@ -2,13 +2,15 @@ use std::fs;
 use std::path::PathBuf;
 
 pub fn find_config() -> Result<PathBuf, String> {
-    let path = PathBuf::from("/etc/nixos/configuration.nix");
+    for filename in ["configuration.nix", "packages.nix"] {
+        let path = PathBuf::from(format!("/etc/nixos/{filename}"));
 
-    if path.exists() {
-        Ok(path)
-    } else {
-        Err("Could not find /etc/nixos/configuration.nix".to_string())
+        if path.is_file() {
+            return Ok(path);
+        }
     }
+
+    Err("Could not find /etc/nixos/configuration.nix or /etc/nixos/packages.nix".to_string())
 }
 
 pub fn read_config(path: &PathBuf) -> Result<String, String> {

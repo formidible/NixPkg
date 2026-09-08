@@ -1,12 +1,17 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Resolve the project directory instead of relying on the directory from which
-# the installer was started.
 PROJECT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 INSTALL_DIR="${XDG_BIN_HOME:-$HOME/.local/bin}"
 BINARY="$INSTALL_DIR/nixpkg"
-CONFIG_FILE="/etc/nixos/configuration.nix"
+CONFIG_DIR="/etc/nixos"
+if [[ -f "$CONFIG_DIR/configuration.nix" ]]; then
+    CONFIG_FILE="$CONFIG_DIR/configuration.nix"
+elif [[ -f "$CONFIG_DIR/packages.nix" ]]; then
+    CONFIG_FILE="$CONFIG_DIR/packages.nix"
+else
+    CONFIG_FILE="$CONFIG_DIR/configuration.nix"
+fi
 
 CYAN='\033[36m'
 GREEN='\033[32m'
@@ -56,7 +61,7 @@ case "$choice" in
         ;;
     2)
         if ! command -v nix >/dev/null 2>&1; then
-            error "Nix is required to install Cargo through configuration.nix."
+            error "Nix is required to install Cargo through the NixOS configuration."
             error "Install Nix/NixOS first, then run this installer again."
             exit 1
         fi
@@ -70,11 +75,8 @@ case "$choice" in
         cleanup() { rm -f "$temp_config"; }
         trap cleanup EXIT
 
-        # Keep the original configuration recoverable before changing it.
         sudo cp -- "$CONFIG_FILE" "${CONFIG_FILE}.nixpkg-installer-backup"
 
-        # Add the tools to an existing environment.systemPackages list when
-        # possible. Otherwise create the list inside the module.
         awk '
             function active(line) {
                 sub(/^[[:space:]]*/, "", line)
@@ -120,8 +122,6 @@ case "$choice" in
         step "Activating Cargo with NixOS"
         sudo nixos-rebuild switch
 
-        # The current shell does not automatically inherit the new system
-        # profile, so include it explicitly for this build.
         if [[ -x /run/current-system/sw/bin/cargo ]]; then
             export PATH="/run/current-system/sw/bin:$PATH"
         fi
