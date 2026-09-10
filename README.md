@@ -8,6 +8,11 @@ It searches `/etc/nixos` for a Nix file containing
 database or extra service; it is simply a convenient way to maintain
 `environment.systemPackages`.
 
+## Path
+To Add NixPkg to your terminal path run the following command in a new terminal.
+```export PATH="$HOME/.local/bin:$PATH"```
+
+
 ## Install
 ```bash
 git clone https://github.com/formidible/NixPkg.git
